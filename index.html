@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Calculadora de playoffs de San Lorenzo en la Zona A del Torneo Clausura 2026.">
+<title>Calculadora del Ciclón</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap">
+<style>
+html{color-scheme:light}body{margin:0;-webkit-text-size-adjust:100%}img{max-width:100%}[hidden]{display:none!important}
+/* Layout: veredicto arriba como marcador de estadio; debajo, fixture (izq) y tabla de la Zona A (der); una columna en el teléfono */
+:root{
+  --bg:#f3f4f8; --surface:#ffffff; --fg:#141a2e; --muted:#5d6580; --line:#dde0ea;
+  --azul:#1b2f6e; --grana:#c4122f; --grana-soft:#fbe7ea; --azul-soft:#e6ebf7;
+  --ok:#137a43; --ok-soft:#e2f4ea; --warn:#9a6200; --warn-soft:#fdf1dc;
+  --cut:#c4122f;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d1120; --surface:#161c31; --fg:#e9ecf5; --muted:#99a1bd; --line:#2a3250;
+  --azul:#8fa8ff; --grana:#ff5a6e; --grana-soft:#3a1720; --azul-soft:#1d2848;
+  --ok:#4fd18b; --ok-soft:#123224; --warn:#f2b54a; --warn-soft:#382a10; --cut:#ff5a6e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d1120; --surface:#161c31; --fg:#e9ecf5; --muted:#99a1bd; --line:#2a3250;
+  --azul:#8fa8ff; --grana:#ff5a6e; --grana-soft:#3a1720; --azul-soft:#1d2848;
+  --ok:#4fd18b; --ok-soft:#123224; --warn:#f2b54a; --warn-soft:#382a10; --cut:#ff5a6e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.01em}
+.stripes{height:8px;border-radius:4px;background:repeating-linear-gradient(90deg,var(--azul) 0 28px,var(--grana) 28px 56px)}
+header{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:8px 16px}
+header h1{font-size:clamp(30px,6vw,44px);font-weight:800;text-transform:uppercase;line-height:1}
+header p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+.eyebrow{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:13px;color:var(--grana)}
+
+/* Veredicto */
+.verdict{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:grid;gap:14px;grid-template-columns:1fr auto;align-items:center}
+.verdict .state{font-family:var(--display);font-weight:800;text-transform:uppercase;font-size:clamp(28px,5vw,40px);line-height:1}
+.verdict .why{color:var(--muted);margin-top:6px;max-width:62ch}
+.v-ok .state{color:var(--ok)} .v-out .state{color:var(--grana)} .v-dep .state{color:var(--warn)}
+.prob{text-align:right;min-width:120px}
+.prob b{display:block;font-family:var(--display);font-weight:800;font-size:48px;line-height:1;font-variant-numeric:tabular-nums;color:var(--azul)}
+.prob span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.chips{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 12px;font-size:13px;font-variant-numeric:tabular-nums}
+.chip b{font-weight:600}
+@media (max-width:560px){.verdict{grid-template-columns:1fr}.prob{text-align:left}}
+
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 14px;border-radius:8px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--azul)}
+.btn.primary{background:var(--azul);border-color:var(--azul);color:var(--surface)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--grana);outline-offset:2px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;min-width:0}
+.panel h2{font-size:24px;text-transform:uppercase;font-weight:700}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:transparent;color:var(--muted);padding:6px 14px;border-radius:999px;font-family:var(--display);font-weight:700;font-size:16px;text-transform:uppercase;letter-spacing:.04em}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--surface);border-color:var(--fg)}
+
+.match{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.match:first-of-type{border-top:0}
+.team{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.team.home{text-align:right}
+.team.slo{color:var(--grana)}
+.team.ext{color:var(--muted);font-weight:500}
+.score{display:flex;align-items:center;gap:4px}
+.score input{width:42px;height:40px;text-align:center;font-family:var(--display);font-size:22px;font-weight:700;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.score input::-webkit-outer-spin-button,.score input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.score input.filled{background:var(--azul-soft);border-color:var(--azul)}
+.dash{color:var(--muted)}
+.meta{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.quick{display:flex;gap:4px}
+.quick button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;padding:2px 9px;font-size:12px;font-weight:600}
+.quick button:hover{color:var(--fg);border-color:var(--fg)}
+.tag{font-size:11px;text-transform:uppercase;letter-spacing:.08em;padding:1px 7px;border-radius:4px;background:var(--ok-soft);color:var(--ok);font-weight:600}
+.tag.pend{background:var(--bg);color:var(--muted)}
+.tag.key{background:var(--grana-soft);color:var(--grana)}
+
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th{font-family:var(--display);text-transform:uppercase;font-weight:700;letter-spacing:.06em;color:var(--muted);font-size:13px;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line)}
+td{padding:6px 6px;text-align:right;border-bottom:1px solid var(--line)}
+th:nth-child(2),td:nth-child(2){text-align:left}
+td:first-child{color:var(--muted);width:28px}
+tr.cut td{border-bottom:2px solid var(--cut)}
+tr.slo td{background:var(--grana-soft);font-weight:700}
+tr.slo td:nth-child(2){color:var(--grana)}
+td.pts{font-weight:700}
+.legend{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--cut)}
+.note{font-size:13px;color:var(--muted);max-width:70ch}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="stripes" aria-hidden="true"></div>
+  <header>
+    <div>
+      <div class="eyebrow">Torneo Clausura 2026 · Zona A</div>
+      <h1>¿Clasifica San Lorenzo?</h1>
+      <p>Cargá resultados de las fechas 14, 15 y 16 y mirá cómo queda la tabla. Pasan a octavos los 8 primeros de la zona.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="b-win">San Lorenzo gana todo</button>
+      <button class="btn" id="b-lose">San Lorenzo pierde todo</button>
+      <button class="btn" id="b-reset">Volver a lo jugado</button>
+    </div>
+  </header>
+
+  <section class="verdict" id="verdict" aria-live="polite"></section>
+
+  <div class="grid">
+    <section class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2>Partidos</h2>
+        <div class="tabs" role="tablist" id="tabs"></div>
+      </div>
+      <div id="matches"></div>
+      <p class="note">Dejá un partido vacío si no querés suponer nada: la app considera todos los resultados posibles para ese partido. Los botones L, E y V cargan 1-0, 0-0 y 0-1.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Tabla Zona A</h2>
+      <div class="tablewrap"><table id="table" aria-label="Tabla de posiciones de la Zona A"></table></div>
+      <div class="legend"><i></i> Línea de clasificación (8.º puesto)</div>
+      <p class="note">Solo suma los partidos con resultado cargado. Desempate: diferencia de gol, después goles a favor. Los interzonales (vs. Banfield, River y el rival de Gimnasia en la fecha 16) suman solo para el equipo de la Zona A.</p>
+    </section>
+  </div>
+  <p class="note">Base: tabla al cierre de la fecha 13 más los resultados oficiales cargados. Resultados actualizados por última vez: <b id="upd"></b>. Se actualizan solos cada noche; lo que cargues vos en partidos sin jugar queda guardado en tu navegador.</p>
+</div>
+
+<script>
+const TEAMS={
+  INS:{n:"Instituto",p:29,gf:20,gc:10},BOC:{n:"Boca",p:24,gf:21,gc:14},DYJ:{n:"Defensa y Justicia",p:24,gf:18,gc:12},
+  VEL:{n:"Vélez",p:24,gf:18,gc:13},LAN:{n:"Lanús",p:23,gf:16,gc:9},NOB:{n:"Newell's",p:20,gf:13,gc:10},
+  GIM:{n:"Gimnasia (M)",p:20,gf:15,gc:13},IND:{n:"Independiente",p:19,gf:12,gc:13},SLO:{n:"San Lorenzo",p:17,gf:7,gc:12},
+  EST:{n:"Estudiantes",p:14,gf:16,gc:15},UNI:{n:"Unión",p:14,gf:18,gc:22},RIE:{n:"Riestra",p:12,gf:10,gc:13},
+  PLA:{n:"Platense",p:11,gf:12,gc:19},CCO:{n:"Central Córdoba",p:10,gf:11,gc:18},TAL:{n:"Talleres",p:9,gf:12,gc:20}
+};
+const EXT={BAN:"Banfield",RIV:"River",INT:"Rival interzonal"};
+const PJ0=13;
+// [fecha, local, visitante, golesL, golesV] (null = sin jugar)
+const FIXTURE=[
+  [14,"GIM","PLA",1,2],[14,"BAN","LAN",1,1],[14,"TAL","DYJ",1,2],[14,"SLO","NOB",0,0],
+  [14,"IND","BOC",null,null],[14,"CCO","VEL",null,null],[14,"UNI","EST",null,null],[14,"INS","RIE",null,null],
+  [15,"DYJ","IND",null,null],[15,"RIE","TAL",null,null],[15,"VEL","SLO",null,null],[15,"EST","INS",null,null],
+  [15,"NOB","UNI",null,null],[15,"PLA","CCO",null,null],[15,"LAN","GIM",null,null],[15,"BOC","RIV",null,null],
+  [16,"CCO","LAN",null,null],[16,"SLO","PLA",null,null],[16,"UNI","VEL",null,null],[16,"INS","NOB",null,null],
+  [16,"TAL","EST",null,null],[16,"IND","RIE",null,null],[16,"BOC","DYJ",null,null],[16,"GIM","INT",null,null]
+];
+const UPDATED="25/10/2026, 00:10";
+const DATES={14:"23 al 27 oct",15:"31 oct y 1 nov",16:"8 nov"};
+const played=FIXTURE.map(m=>m[3]!==null);
+let res=FIXTURE.map(m=>[m[3],m[4]]);
+const KEY="ciclon-calc-v2";
+// Las especulaciones guardadas solo se aplican a partidos sin resultado oficial
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(Array.isArray(s)&&s.length===res.length)s.forEach((r,i)=>{if(!played[i])res[i]=r});}catch(e){}
+let tab=15;try{tab=+localStorage.getItem(KEY+"-tab")||15}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(res));localStorage.setItem(KEY+"-tab",String(tab))}catch(e){}}
+
+const nm=id=>TEAMS[id]?TEAMS[id].n:EXT[id];
+const decided=i=>res[i][0]!==null&&res[i][1]!==null&&res[i][0]!==""&&res[i][1]!=="";
+
+function standings(results){
+  const t={};for(const k in TEAMS){const T=TEAMS[k];t[k]={id:k,p:T.p,gf:T.gf,gc:T.gc,pj:PJ0,g:0}}
+  FIXTURE.forEach((m,i)=>{const r=results[i];if(r[0]===null||r[1]===null||r[0]===""||r[1]==="")return;
+    const a=+r[0],b=+r[1];
+    [[m[1],a,b],[m[2],b,a]].forEach(([id,f,c])=>{const x=t[id];if(!x)return;x.pj++;x.gf+=f;x.gc+=c;x.p+=f>c?3:f===c?1:0});
+  });
+  return Object.values(t).sort((x,y)=>y.p-x.p||(y.gf-y.gc)-(x.gf-x.gc)||y.gf-x.gf||x.id.localeCompare(y.id));
+}
+
+function bounds(){
+  const tbl=standings(res);const b={};tbl.forEach(r=>b[r.id]={min:r.p,max:r.p});
+  FIXTURE.forEach((m,i)=>{if(decided(i))return;[m[1],m[2]].forEach(id=>{if(b[id])b[id].max+=3})});
+  return b;
+}
+
+function simulate(n){
+  const open=FIXTURE.map((_,i)=>!decided(i));let inn=0;
+  const r=res.map(x=>x.slice());
+  for(let s=0;s<n;s++){
+    FIXTURE.forEach((m,i)=>{if(!open[i])return;const u=Math.random();
+      const g=()=>Math.random()<.6?1:Math.random()<.75?2:3;
+      if(u<.42){const w=g();r[i]=[w+(Math.random()<.35?1:0),Math.random()<.35?1:0];if(r[i][0]<=r[i][1])r[i]=[r[i][1]+1,r[i][1]]}
+      else if(u<.70){const d=Math.random()<.45?0:Math.random()<.8?1:2;r[i]=[d,d]}
+      else{const w=g();r[i]=[Math.random()<.35?1:0,w+(Math.random()<.35?1:0)];if(r[i][1]<=r[i][0])r[i]=[r[i][0],r[i][0]+1]}
+    });
+    const t=standings(r);if(t.findIndex(x=>x.id==="SLO")<8)inn++;
+  }
+  return inn/n;
+}
+
+function renderVerdict(){
+  const b=bounds(),sl=b.SLO;const others=Object.keys(b).filter(k=>k!=="SLO");
+  const canPass=others.filter(k=>b[k].max>=sl.min).length;   // pueden igualar o superar su piso
+  const surelyAbove=others.filter(k=>b[k].min>sl.max).length; // ya lo superan aunque gane todo
+  const tbl=standings(res);const pos=tbl.findIndex(x=>x.id==="SLO")+1;const me=tbl[pos-1];
+  const openAll=FIXTURE.some((_,i)=>!decided(i));
+  const slLeft=FIXTURE.filter((m,i)=>!decided(i)&&(m[1]==="SLO"||m[2]==="SLO")).length;
+  let cls,state,why,p;
+  if(!openAll){p=pos<=8?1:0;cls=pos<=8?"v-ok":"v-out";state=pos<=8?"Clasifica":"Afuera";
+    why=`Con todos los resultados cargados, San Lorenzo termina ${pos}.º con ${me.p} puntos.`+(pos<=8?"":" Puede cambiar por desempate si algún marcador difiere.");}
+  else if(canPass<8){cls="v-ok";state="Clasifica seguro";p=1;why=`Pase lo que pase en los partidos sin cargar, como mucho ${canPass} equipos pueden alcanzarlo. Termina entre los 8.`}
+  else if(surelyAbove>=8){cls="v-out";state="Eliminado";p=0;why=`Aun ganando todo llega a ${sl.max} puntos y ya hay ${surelyAbove} equipos que lo superan sí o sí.`}
+  else{p=simulate(4000);cls="v-dep";state=pos<=8?"Hoy adentro, depende":"Hoy afuera, depende";
+    why=`Con lo cargado está ${pos}.º. Le quedan ${slLeft} partido${slLeft===1?"":"s"} sin resultado: puede terminar entre ${sl.min} y ${sl.max} puntos. ${canPass} rivales todavía pueden alcanzarlo.`}
+  const pct=Math.round(p*100);
+  document.getElementById("verdict").className="verdict "+cls;
+  document.getElementById("verdict").innerHTML=`
+    <div><div class="state">${state}</div><div class="why">${why}</div></div>
+    <div class="prob"><b>${pct}%</b><span>chance estimada</span></div>
+    <div class="chips">
+      <span class="chip">Puesto <b>${pos}.º</b></span>
+      <span class="chip">Puntos <b>${me.p}</b></span>
+      <span class="chip">Techo <b>${sl.max}</b></span>
+      <span class="chip">DG <b>${me.gf-me.gc>0?"+":""}${me.gf-me.gc}</b></span>
+      <span class="chip">8.º hoy: <b>${nm(tbl[7].id)} (${tbl[7].p})</b></span>
+    </div>`;
+}
+
+function renderTable(){
+  const tbl=standings(res);
+  document.getElementById("table").innerHTML="<thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>DG</th><th>GF</th><th>Pts</th></tr></thead><tbody>"+
+    tbl.map((r,i)=>`<tr class="${r.id==="SLO"?"slo":""} ${i===7?"cut":""}"><td>${i+1}</td><td>${nm(r.id)}</td><td>${r.pj}</td><td>${r.gf-r.gc>0?"+":""}${r.gf-r.gc}</td><td>${r.gf}</td><td class="pts">${r.p}</td></tr>`).join("")+"</tbody>";
+}
+
+function renderTabs(){
+  document.getElementById("tabs").innerHTML=[14,15,16].map(f=>`<button class="tab" role="tab" aria-selected="${f===tab}" data-f="${f}">Fecha ${f}</button>`).join("");
+}
+
+function renderMatches(){
+  const box=document.getElementById("matches");
+  box.innerHTML=`<div class="meta" style="padding-bottom:4px"><span>${DATES[tab]}</span></div>`+FIXTURE.map((m,i)=>{
+    if(m[0]!==tab)return"";
+    const isSL=m[1]==="SLO"||m[2]==="SLO";
+    const tcls=id=>id==="SLO"?"slo":TEAMS[id]?"":"ext";
+    const tag=played[i]?'<span class="tag">Jugado</span>':isSL?'<span class="tag key">Partido del Ciclón</span>':'<span class="tag pend">Por jugar</span>';
+    const v=x=>x===null||x===""?"":x;
+    return `<div class="match">
+      <div class="team home ${tcls(m[1])}">${nm(m[1])}</div>
+      <div class="score">
+        <input id="h${i}" data-i="${i}" data-s="0" type="number" min="0" max="15" inputmode="numeric" aria-label="Goles de ${nm(m[1])}" value="${v(res[i][0])}" class="${v(res[i][0])!==""?"filled":""}">
+        <span class="dash">–</span>
+        <input id="a${i}" data-i="${i}" data-s="1" type="number" min="0" max="15" inputmode="numeric" aria-label="Goles de ${nm(m[2])}" value="${v(res[i][1])}" class="${v(res[i][1])!==""?"filled":""}">
+      </div>
+      <div class="team ${tcls(m[2])}">${nm(m[2])}</div>
+      <div class="meta">${tag}<div class="quick">
+        <button data-q="${i}" data-r="1,0" aria-label="Gana ${nm(m[1])}">L</button>
+        <button data-q="${i}" data-r="0,0" aria-label="Empate">E</button>
+        <button data-q="${i}" data-r="0,1" aria-label="Gana ${nm(m[2])}">V</button>
+        <button data-q="${i}" data-r="" aria-label="Borrar resultado">✕</button></div></div>
+    </div>`}).join("");
+}
+
+function refresh(full){save();if(full){renderTabs();renderMatches()}renderTable();renderVerdict()}
+
+document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;tab=+b.dataset.f;refresh(true)});
+document.getElementById("matches").addEventListener("input",e=>{const el=e.target;if(!el.dataset.i)return;
+  let v=el.value.trim();if(v!==""){v=Math.max(0,Math.min(15,parseInt(v,10)||0))}
+  res[+el.dataset.i][+el.dataset.s]=v===""?null:v;el.classList.toggle("filled",v!=="");refresh(false)});
+document.getElementById("matches").addEventListener("click",e=>{const b=e.target.closest("[data-q]");if(!b)return;
+  const i=+b.dataset.q;res[i]=b.dataset.r?b.dataset.r.split(",").map(Number):[null,null];refresh(true)});
+function setSL(win){FIXTURE.forEach((m,i)=>{if(played[i])return;if(m[1]==="SLO")res[i]=win?[1,0]:[0,1];if(m[2]==="SLO")res[i]=win?[0,1]:[1,0]});refresh(true)}
+document.getElementById("b-win").onclick=()=>setSL(true);
+document.getElementById("b-lose").onclick=()=>setSL(false);
+document.getElementById("b-reset").onclick=()=>{res=FIXTURE.map(m=>[m[3],m[4]]);refresh(true)};
+document.getElementById("upd").textContent=UPDATED;
+refresh(true);
+</script>
+</body>
+</html>
