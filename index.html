@@ -151,14 +151,14 @@ const PJ0=13;
 // [fecha, local, visitante, golesL, golesV] (null = sin jugar)
 const FIXTURE=[
   [14,"GIM","PLA",1,2],[14,"BAN","LAN",1,1],[14,"TAL","DYJ",1,2],[14,"SLO","NOB",0,0],
-  [14,"IND","BOC",null,null],[14,"CCO","VEL",null,null],[14,"UNI","EST",null,null],[14,"INS","RIE",null,null],
-  [15,"DYJ","IND",null,null],[15,"RIE","TAL",null,null],[15,"VEL","SLO",null,null],[15,"EST","INS",null,null],
+  [14,"IND","BOC",0,1],[14,"CCO","VEL",0,5],[14,"UNI","EST",3,1],[14,"INS","RIE",1,0],
+  [15,"DYJ","IND",null,null],[15,"RIE","TAL",0,3],[15,"VEL","SLO",2,2],[15,"EST","INS",3,3],
   [15,"NOB","UNI",null,null],[15,"PLA","CCO",null,null],[15,"LAN","GIM",null,null],[15,"BOC","RIV",null,null],
   [16,"CCO","LAN",null,null],[16,"SLO","PLA",null,null],[16,"UNI","VEL",null,null],[16,"INS","NOB",null,null],
   [16,"TAL","EST",null,null],[16,"IND","RIE",null,null],[16,"BOC","DYJ",null,null],[16,"GIM","INT",null,null]
 ];
-const UPDATED="25/10/2026, 00:10";
-const DATES={14:"23 al 27 oct",15:"31 oct y 1 nov",16:"8 nov"};
+const UPDATED="01/11/2026, 01:30";
+const DATES={14:"23 al 27 oct",15:"31 oct al 2 nov",16:"8 nov"};
 const played=FIXTURE.map(m=>m[3]!==null);
 let res=FIXTURE.map(m=>[m[3],m[4]]);
 const KEY="ciclon-calc-v2";
