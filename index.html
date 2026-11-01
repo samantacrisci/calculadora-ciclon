@@ -97,6 +97,20 @@ td.pts{font-weight:700}
 .legend{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
 .legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--cut)}
 .note{font-size:13px;color:var(--muted);max-width:70ch}
+/* Escenarios */
+.sc-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px}
+.sc-s{border-radius:10px;padding:10px 12px;display:grid;gap:2px}
+.sc-s b{font-family:var(--display);font-weight:800;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.sc-s span{font-size:13px;font-weight:600}
+.c-ok{background:var(--ok-soft);color:var(--ok)} .c-mid{background:var(--warn-soft);color:var(--warn)} .c-out{background:var(--grana-soft);color:var(--grana)}
+table.sc-t td,table.sc-t th{text-align:left;padding:10px 8px}
+table.sc-t td:first-child{width:auto;color:var(--muted);white-space:nowrap}
+table.sc-t tr.slo td{background:var(--grana-soft)}
+table.sc-t td.want{font-weight:700;color:var(--ok)}
+table.sc-t tr.slo td.want{color:var(--grana)}
+.dots{color:var(--grana);letter-spacing:2px;white-space:nowrap}
+.dots i{font-style:normal;color:var(--line)}
+@media (max-width:560px){table.sc-t th.imp,table.sc-t td.imp{display:none}}
 </style>
 </head>
 <body>
@@ -117,6 +131,13 @@ td.pts{font-weight:700}
   </header>
 
   <section class="verdict" id="verdict" aria-live="polite"></section>
+
+  <section class="panel" id="scen">
+    <h2>Lo que le conviene a San Lorenzo</h2>
+    <div class="sc-sum" id="sc-sum"></div>
+    <div class="tablewrap"><table class="sc-t" id="sc-t"></table></div>
+    <p class="note">Chances estimadas simulando miles de finales posibles para los partidos que faltan.</p>
+  </section>
 
   <div class="grid">
     <section class="panel">
@@ -212,7 +233,7 @@ function renderVerdict(){
     why=`Con todos los resultados cargados, San Lorenzo termina ${pos}.º con ${me.p} puntos.`+(pos<=8?"":" Puede cambiar por desempate si algún marcador difiere.");}
   else if(canPass<8){cls="v-ok";state="Clasifica seguro";p=1;why=`Pase lo que pase en los partidos sin cargar, como mucho ${canPass} equipos pueden alcanzarlo. Termina entre los 8.`}
   else if(surelyAbove>=8){cls="v-out";state="Eliminado";p=0;why=`Aun ganando todo llega a ${sl.max} puntos y ya hay ${surelyAbove} equipos que lo superan sí o sí.`}
-  else{p=simulate(4000);cls="v-dep";state=pos<=8?"Hoy adentro, depende":"Hoy afuera, depende";
+  else{p=SC?SC.rate:simulate(4000);cls="v-dep";state=pos<=8?"Hoy adentro, depende":"Hoy afuera, depende";
     why=`Con lo cargado está ${pos}.º. Le quedan ${slLeft} partido${slLeft===1?"":"s"} sin resultado: puede terminar entre ${sl.min} y ${sl.max} puntos. ${canPass} rivales todavía pueden alcanzarlo.`}
   const pct=Math.round(p*100);
   document.getElementById("verdict").className="verdict "+cls;
@@ -262,7 +283,55 @@ function renderMatches(){
     </div>`}).join("");
 }
 
-function refresh(full){save();if(full){renderTabs();renderMatches()}renderTable();renderVerdict()}
+// ---- Lo que le conviene a San Lorenzo ----
+const NSIM=30000;
+let SC=null;
+function randScore(){const u=Math.random();const g=()=>Math.random()<.6?1:Math.random()<.75?2:3;let r;
+  if(u<.42){const w=g();r=[w+(Math.random()<.35?1:0),Math.random()<.35?1:0];if(r[0]<=r[1])r=[r[1]+1,r[1]]}
+  else if(u<.70){const d=Math.random()<.45?0:Math.random()<.8?1:2;r=[d,d]}
+  else{const w=g();r=[Math.random()<.35?1:0,w+(Math.random()<.35?1:0)];if(r[1]<=r[0])r=[r[0],r[0]+1]}
+  return r}
+function sampleScen(n){
+  const M=FIXTURE.length,open=FIXTURE.map((_,i)=>!decided(i));
+  const out=new Int8Array(n*M),pass=new Uint8Array(n),slp=new Int8Array(n),r=res.map(x=>x.slice());let tot=0;
+  for(let s=0;s<n;s++){
+    for(let i=0;i<M;i++){if(!open[i])continue;const x=randScore();r[i]=x;out[s*M+i]=x[0]>x[1]?0:x[0]===x[1]?1:2;
+      const m=FIXTURE[i];if(m[1]==="SLO")slp[s]+=x[0]>x[1]?3:x[0]===x[1]?1:0;if(m[2]==="SLO")slp[s]+=x[1]>x[0]?3:x[0]===x[1]?1:0}
+    if(standings(r).findIndex(x=>x.id==="SLO")<8){pass[s]=1;tot++}
+  }
+  return{n,M,out,pass,slp,open,rate:tot/n};
+}
+const fmtP=p=>p>=.99?"&gt;99%":p<=.01?"&lt;1%":Math.round(p*100)+"%";
+const pcls=p=>p>=.75?"c-ok":p<=.15?"c-out":"c-mid";
+
+function renderScen(){
+  const{n,M,out,pass,slp,open}=SC;
+  const slOpen=FIXTURE.map((m,i)=>i).filter(i=>open[i]&&(FIXTURE[i][1]==="SLO"||FIXTURE[i][2]==="SLO"));
+  const sec=document.getElementById("scen");
+  if(!open.some(Boolean)){sec.hidden=true;return}sec.hidden=false;
+  // Resumen según los puntos que sume San Lorenzo
+  const byPts=pts=>{let c=0,k=0;for(let s=0;s<n;s++)if(pts.includes(slp[s])){c++;k+=pass[s]}return c?k/c:0};
+  let groups=[];
+  if(slOpen.length===2)groups=[["Gana los 2",[6]],["Gana 1 y empata 1",[4]],["Gana 1 y pierde 1",[3]],["Suma 2 o menos",[0,1,2]]];
+  else if(slOpen.length===1)groups=[["Gana",[3]],["Empata",[1]],["Pierde",[0]]];
+  document.getElementById("sc-sum").innerHTML=groups.map(([t,p])=>{const q=byPts(p);return `<div class="sc-s ${pcls(q)}"><span>Si San Lorenzo ${t.toLowerCase()}</span><b>${fmtP(q)}</b></div>`}).join("");
+  // Tabla: resultado que le conviene en cada partido
+  const rows=[];
+  FIXTURE.forEach((m,i)=>{if(!open[i])return;
+    const ps=[0,0,0],cs=[0,0,0];for(let s=0;s<n;s++){const o=out[s*M+i];cs[o]++;ps[o]+=pass[s]}
+    const pr=ps.map((k,o)=>cs[o]?k/cs[o]:0);const best=pr.indexOf(Math.max(...pr));const spread=Math.max(...pr)-Math.min(...pr);
+    const isSL=slOpen.includes(i);if(!isSL&&spread<.05)return;
+    const w=m[best===0?1:2],l=m[best===0?2:1];const want=best===1?"Empate":TEAMS[w]?`Gana ${nm(w)}`:`Pierde ${nm(l)}`;
+    rows.push({i,m,isSL,want,spread});
+  });
+  const others=rows.filter(r=>!r.isSL).sort((a,b)=>b.spread-a.spread).slice(0,6);
+  const list=rows.filter(r=>r.isSL).concat(others).sort((a,b)=>a.m[0]-b.m[0]||b.isSL-a.isSL||b.spread-a.spread);
+  const dots=s=>{const k=s>=.3?3:s>=.15?2:1;return `<span class="dots" aria-label="importancia ${k} de 3">${"●".repeat(k)}<i>${"●".repeat(3-k)}</i></span>`};
+  document.getElementById("sc-t").innerHTML="<thead><tr><th>Fecha</th><th>Partido</th><th>Le conviene</th><th class=\"imp\">Importancia</th></tr></thead><tbody>"+
+    list.map(r=>`<tr class="${r.isSL?"slo":""}"><td>${r.m[0]}</td><td>${nm(r.m[1])} vs. ${nm(r.m[2])}</td><td class="want">${r.want}</td><td class="imp">${dots(r.spread)}</td></tr>`).join("")+"</tbody>";
+}
+
+function refresh(full){save();if(full){renderTabs();renderMatches()}renderTable();SC=sampleScen(NSIM);renderVerdict();renderScen()}
 
 document.getElementById("tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;tab=+b.dataset.f;refresh(true)});
 document.getElementById("matches").addEventListener("input",e=>{const el=e.target;if(!el.dataset.i)return;
